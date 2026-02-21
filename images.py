@@ -91,11 +91,11 @@ def resize_for_platform(img: Image.Image, platform: str = "instagram") -> Image.
         elif aspect < 0.8:
             img = _crop_to_ratio(img, 0.8)
         new_h = int(1080 * img.height / img.width)
-        return img.resize((1080, new_h), Image.LANCZOS)
+        return img.resize((1080, new_h), Image.Resampling.LANCZOS)
 
     if normalized == "facebook":
         square = _crop_to_ratio(img, 1.0)
-        return square.resize((1080, 1080), Image.LANCZOS)
+        return square.resize((1080, 1080), Image.Resampling.LANCZOS)
 
     raise ValueError(f"Unsupported platform: {platform}")
 

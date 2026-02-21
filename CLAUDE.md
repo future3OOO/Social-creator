@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Rental Listing Social Media Agent — a Python async pipeline that takes a TradeMe rental listing URL and automatically scrapes it, selects the best images, generates platform-optimized copy via Claude, and publishes to Facebook + Instagram.
 
-**Status:** Greenfield project. `rental-agent-spec.md` contains the full implementation specification with code templates. No code has been implemented yet.
+**Status:** Core pipeline implemented (scraper, images, copy gen, publisher) with FastAPI backend and React frontend. `rental-agent-spec.md` contains the original specification.
 
 ## Pipeline Architecture
 

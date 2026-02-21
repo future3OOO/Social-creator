@@ -141,9 +141,9 @@ async def process_images(req: ImagesRequest) -> StreamingResponse:
                 "hero": [{"public_url": pub_url(img), "score": img.score} for img in result["hero"]],
                 "carousel": [{"public_url": pub_url(img), "score": img.score} for img in result["carousel"]],
             }
-            cleanup_local(listing_dir)
             yield sse_event("progress", {"step": "images", "message": f"Prepared {len(result['carousel'])} images"})
             yield sse_event("complete", {"images": serialized})
+            cleanup_local(listing_dir)
         except Exception as e:
             yield sse_event("error", {"message": str(e)})
 
@@ -156,7 +156,8 @@ async def gen_copy(req: CopyRequest) -> dict:
         posts = await generate_posts(req.listing)
         return {"facebook": posts.facebook, "instagram": posts.instagram}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Copy generation failed")
+        raise HTTPException(status_code=500, detail="Copy generation failed")
 
 
 @app.post("/api/publish")
@@ -165,6 +166,8 @@ async def publish(req: PublishRequest) -> dict:
     ig_user_id = os.environ.get("IG_USER_ID", "")
     page_token = os.environ.get("META_PAGE_TOKEN", "")
 
+    if not req.image_urls:
+        raise HTTPException(status_code=400, detail="No images provided")
     if not all([page_id, ig_user_id, page_token]):
         raise HTTPException(status_code=500, detail="Missing Meta API credentials in env")
 
@@ -195,7 +198,8 @@ async def publish(req: PublishRequest) -> dict:
             results["instagram"] = await pub.post_instagram(req.image_urls, req.instagram_caption)
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Publish failed")
+        raise HTTPException(status_code=500, detail="Publish failed")
     finally:
         await pub.close()
         if listing_dir:

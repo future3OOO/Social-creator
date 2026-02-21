@@ -39,8 +39,8 @@ export default function PublishPanel() {
       }
       setPublishResults(await resp.json());
       setStage("done");
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Publish failed");
     } finally {
       setLoading(false);
     }

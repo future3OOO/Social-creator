@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useStore } from "../store";
 
 export default function InstagramPreview() {
@@ -6,6 +6,7 @@ export default function InstagramPreview() {
   const allImages = useStore((s) => s.images);
   const images = useMemo(() => allImages.filter((img) => img.selected), [allImages]);
   const [idx, setIdx] = useState(0);
+  useEffect(() => { if (idx >= images.length) setIdx(Math.max(0, images.length - 1)); }, [images.length]);
   const current = images[idx] ?? images[0];
 
   // Split caption and hashtags

@@ -44,7 +44,7 @@ async function consumeSSE(
         if (line.startsWith("event: ")) event = line.slice(7);
         else if (line.startsWith("data: ")) data = line.slice(6);
       }
-      if (data) onEvent(event, JSON.parse(data));
+      if (data) try { onEvent(event, JSON.parse(data)); } catch { /* malformed SSE frame */ }
     }
   }
 }
