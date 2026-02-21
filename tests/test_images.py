@@ -76,6 +76,27 @@ def test_normal_aspect_no_crop():
     assert resized.height == 607  # 1080 * 1080/1920 ≈ 607
 
 
+def test_resize_accepts_platform_arg():
+    """Backwards-compatible API: callers can still pass platform explicitly."""
+    img = _make_image(1920, 1080)
+    resized = resize_for_platform(img, "instagram")
+    assert resized.width == 1080
+    assert resized.height == 607
+
+
+def test_facebook_resize_is_square():
+    """Facebook variant should output a square image."""
+    img = _make_image(2000, 1000)
+    resized = resize_for_platform(img, "facebook")
+    assert resized.size == (1080, 1080)
+
+
+def test_unknown_platform_raises():
+    img = _make_image(1000, 1000)
+    with pytest.raises(ValueError, match="Unsupported platform"):
+        resize_for_platform(img, "linkedin")
+
+
 # -- download_and_validate --
 
 @pytest.mark.asyncio

@@ -62,29 +62,41 @@ def score_image(img: Image.Image) -> float:
     return resolution_score * aspect_score
 
 
-def resize_for_platform(img: Image.Image) -> Image.Image:
-    """Resize to 1080px wide, preserving original aspect ratio.
-
-    Clamps aspect ratio to Instagram's allowed range (4:5 to 1.91:1).
-    Only crops if the image falls outside that range; most property
-    photos (landscape ~16:9 = 1.78:1) fit without any cropping.
-    """
-    aspect = img.width / img.height
-    # Instagram range: 4:5 (0.8) to 1.91:1
-    if aspect > 1.91:
-        # Too wide — crop sides to 1.91:1
-        new_w = int(img.height * 1.91)
+def _crop_to_ratio(img: Image.Image, target_ratio: float) -> Image.Image:
+    """Center-crop to a target aspect ratio."""
+    img_ratio = img.width / img.height
+    if img_ratio > target_ratio:
+        new_w = int(img.height * target_ratio)
         left = (img.width - new_w) // 2
-        img = img.crop((left, 0, left + new_w, img.height))
-    elif aspect < 0.8:
-        # Too tall — crop top/bottom to 4:5
-        new_h = int(img.width / 0.8)
+        return img.crop((left, 0, left + new_w, img.height))
+    if img_ratio < target_ratio:
+        new_h = int(img.width / target_ratio)
         top = (img.height - new_h) // 2
-        img = img.crop((0, top, img.width, top + new_h))
+        return img.crop((0, top, img.width, top + new_h))
+    return img
 
-    # Scale to 1080px wide
-    new_h = int(1080 * img.height / img.width)
-    return img.resize((1080, new_h), Image.LANCZOS)
+
+def resize_for_platform(img: Image.Image, platform: str = "instagram") -> Image.Image:
+    """Resize for platform while preserving backward-compatible API.
+
+    - instagram (default): width=1080 with IG feed aspect clamp (4:5 to 1.91:1)
+    - facebook: center-cropped square 1080x1080
+    """
+    normalized = platform.lower()
+    if normalized == "instagram":
+        aspect = img.width / img.height
+        if aspect > 1.91:
+            img = _crop_to_ratio(img, 1.91)
+        elif aspect < 0.8:
+            img = _crop_to_ratio(img, 0.8)
+        new_h = int(1080 * img.height / img.width)
+        return img.resize((1080, new_h), Image.LANCZOS)
+
+    if normalized == "facebook":
+        square = _crop_to_ratio(img, 1.0)
+        return square.resize((1080, 1080), Image.LANCZOS)
+
+    raise ValueError(f"Unsupported platform: {platform}")
 
 
 async def select_and_prepare_images(

@@ -217,5 +217,5 @@ async def publish(req: PublishRequest) -> dict:
             try:
                 await cleanup_remote(listing_dir)
                 MANAGED_LISTING_DIRS.discard(listing_dir)
-            except OSError:
-                logger.warning("Remote cleanup failed for %s", listing_dir)
+            except Exception as e:
+                logger.warning("Remote cleanup failed for %s: %s", listing_dir, e)

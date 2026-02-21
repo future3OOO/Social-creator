@@ -97,18 +97,30 @@ class MetaPublisher:
 
     async def _wait_for_container(self, container_id: str, max_wait: int = 30) -> None:
         """Poll until an Instagram media container finishes processing."""
+        last_payload: dict | None = None
         for _ in range(max_wait):
             resp = await self.client.get(
                 f"{BASE}/{container_id}",
                 params={"fields": "status_code", "access_token": self.token},
             )
-            status = resp.json().get("status_code")
+            if not resp.is_success:
+                logger.error(
+                    "Meta API GET %s → %s: %s",
+                    container_id, resp.status_code, resp.text,
+                )
+                resp.raise_for_status()
+
+            payload = resp.json()
+            last_payload = payload
+            status = payload.get("status_code")
             if status == "FINISHED":
                 return
             if status == "ERROR":
-                raise ContainerError(f"Container {container_id} failed: {resp.json()}")
+                raise ContainerError(f"Container {container_id} failed: {payload}")
             await asyncio.sleep(1)
-        raise TimeoutError(f"Container {container_id} not ready after {max_wait}s")
+        raise TimeoutError(
+            f"Container {container_id} not ready after {max_wait}s (last payload: {last_payload})"
+        )
 
     async def close(self) -> None:
         await self.client.aclose()
