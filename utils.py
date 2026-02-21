@@ -42,7 +42,7 @@ async def run_subprocess(*args: str) -> str:
 
 def _safe_listing_dir(listing_dir: str) -> str:
     """Validate listing_dir to prevent path traversal."""
-    if not re.match(r'^[a-zA-Z0-9_-]+$', listing_dir):
+    if not re.match(r'^tm-\d+$', listing_dir):
         raise ValueError(f"Invalid listing_dir: {listing_dir}")
     return listing_dir
 

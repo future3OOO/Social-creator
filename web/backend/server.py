@@ -124,7 +124,6 @@ async def scrape(req: ScrapeRequest) -> StreamingResponse:
             yield sse_event("error", {"message": str(e)})
             return
 
-        cleanup_local()
         yield sse_event("progress", {"step": "scraping", "message": "Connecting to TradeMe..."})
         try:
             listing = await scrape_trademe_listing(safe_url)

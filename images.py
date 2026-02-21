@@ -6,6 +6,7 @@ and saves to the local image directory for upload and Meta API access.
 """
 
 import asyncio
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -112,6 +113,8 @@ async def select_and_prepare_images(
     Returns {"hero": [top image], "carousel": [top N images]}.
     When host_url is provided, public_url is set for each image.
     """
+    if not re.match(r'^\d+$', listing_id):
+        raise ValueError(f"Invalid listing_id: {listing_id}")
     listing_dir = Path(local_dir) / f"tm-{listing_id}"
     listing_dir.mkdir(parents=True, exist_ok=True)
 
