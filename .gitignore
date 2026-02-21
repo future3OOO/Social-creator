@@ -1,0 +1,18 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+env.env.txt
+output/
+*.log
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+node_modules/
+dist/
+*.Zone.Identifier
+New Text Document.txt
