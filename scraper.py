@@ -7,8 +7,25 @@ reconstructed as full-size /plus/ URLs.
 
 import json
 import re
+from urllib.parse import urlparse
+
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
+
+TRADEME_HOST = "trademe.co.nz"
+
+
+def _validate_trademe_url(url: str) -> str:
+    """Validate scheme/host to avoid scraping arbitrary sites."""
+    stripped = url.strip()
+    parsed = urlparse(stripped)
+    hostname = (parsed.hostname or "").lower()
+
+    if parsed.scheme not in {"http", "https"} or not hostname:
+        raise ValueError("URL must be an http(s) TradeMe listing URL.")
+    if hostname != TRADEME_HOST and not hostname.endswith(f".{TRADEME_HOST}"):
+        raise ValueError("URL must be a trademe.co.nz host.")
+    return stripped
 
 
 def _extract_listing_id(url: str) -> str:
@@ -137,7 +154,8 @@ async def scrape_trademe_listing(url: str) -> dict:
     Returns dict with keys: url, listing_id, title, price, address,
     description, images (full-size CDN URLs), attributes.
     """
-    listing_id = _extract_listing_id(url)
+    safe_url = _validate_trademe_url(url)
+    listing_id = _extract_listing_id(safe_url)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -147,7 +165,7 @@ async def scrape_trademe_listing(url: str) -> dict:
                 viewport={"width": 1920, "height": 1080},
             )
             page = await context.new_page()
-            await page.goto(url, wait_until="networkidle", timeout=60000)
+            await page.goto(safe_url, wait_until="networkidle", timeout=60000)
             try:
                 await page.wait_for_selector("h1", timeout=10000)
             except PlaywrightTimeout:
@@ -187,7 +205,7 @@ async def scrape_trademe_listing(url: str) -> dict:
     images = [f"https://trademe.tmcdn.co.nz/photoserver/plus/{pid}.jpg" for pid in photo_ids]
 
     return {
-        "url": url,
+        "url": safe_url,
         "listing_id": listing_id,
         "title": fields.get("title"),
         "price": fields.get("price"),

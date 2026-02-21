@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { useStore, type ListingData } from "../store";
 
+function isTradeMeUrl(input: string): boolean {
+  try {
+    const parsed = new URL(input);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      (host === "trademe.co.nz" || host.endsWith(".trademe.co.nz"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Consume an SSE stream, calling onEvent for each parsed event. */
 async function consumeSSE(
   url: string,
@@ -44,7 +57,7 @@ export default function UrlInput() {
     const trimmed = url.trim();
     if (!trimmed) return;
 
-    if (!trimmed.includes("trademe.co.nz")) {
+    if (!isTradeMeUrl(trimmed)) {
       useStore.getState().setError("URL must be a trademe.co.nz listing");
       return;
     }
