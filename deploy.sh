@@ -7,8 +7,15 @@ rsync -avz --delete \
   --exclude='venv/' \
   --exclude='__pycache__/' \
   --exclude='.env' \
+  --exclude='.env.*' \
+  --exclude='env.env.txt' \
   --exclude='.git/' \
+  --exclude='.git*' \
+  --exclude='.claude/' \
   --exclude='.pytest_cache/' \
+  --exclude='node_modules/' \
+  --exclude='*.Zone.Identifier' \
+  --exclude='New Text Document.txt' \
   "$SCRIPT_DIR/" \
   "codex@hetzner-chch:/home/codex/listing-creator/"
 
