@@ -49,7 +49,7 @@ def _parse_json_ld(raw: str) -> dict | None:
 
     # JSON-LD can be a list or single object
     if isinstance(data, list):
-        data = next((d for d in data if d.get("@type") in ("Product", "Residence", "RentAction", "Place")), None)
+        data = next((d for d in data if isinstance(d, dict) and d.get("@type") in ("Product", "Residence", "RentAction", "Place")), None)
         if data is None:
             return None
 
