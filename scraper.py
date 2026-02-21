@@ -151,16 +151,17 @@ async def scrape_trademe_listing(url: str) -> dict:
                 viewport={"width": 1920, "height": 1080},
             )
             page = await context.new_page()
-            await page.goto(safe_url, wait_until="networkidle", timeout=60000)
+            await page.goto(safe_url, wait_until="domcontentloaded", timeout=30000)
             try:
                 await page.wait_for_selector("h1", timeout=10000)
             except PlaywrightTimeout:
                 pass  # Some layouts lack h1; DOM fallback will handle it
 
-            # Scroll to trigger lazy-loaded images, then wait for them
+            # Scroll to trigger lazy-loaded images, then wait briefly
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_load_state("networkidle")
+            await page.wait_for_timeout(2000)
             await page.evaluate("window.scrollTo(0, 0)")
+            await page.wait_for_timeout(1000)
 
             html = await page.content()
         finally:
