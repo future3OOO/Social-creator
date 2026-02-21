@@ -110,9 +110,8 @@ class MetaPublisher:
                 )
                 resp.raise_for_status()
 
-            payload = resp.json()
-            last_payload = payload
-            status = payload.get("status_code")
+            last_payload = resp.json()
+            status = last_payload.get("status_code")
             if status == "FINISHED":
                 return
             if status == "ERROR":

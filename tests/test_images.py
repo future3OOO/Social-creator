@@ -1,6 +1,5 @@
 """Tests for images.py — scoring, resizing, and download validation."""
 
-import asyncio
 from io import BytesIO
 from unittest.mock import AsyncMock
 
