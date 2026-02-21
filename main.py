@@ -20,15 +20,6 @@ def _validate_env() -> None:
         sys.exit(1)
 
 
-def _validate_url(url: str) -> str:
-    """Basic validation that this looks like a TradeMe listing URL."""
-    url = url.strip()
-    if "trademe.co.nz" not in url:
-        print("URL must be a trademe.co.nz listing.")
-        sys.exit(1)
-    return url
-
-
 async def process_listing(url: str) -> dict:
     """Full pipeline: URL → scrape → images → copy → publish."""
     # Late imports so dotenv loads before any module reads env vars
@@ -119,9 +110,7 @@ def main() -> None:
     load_dotenv()
     _validate_env()
 
-    url = input("Paste TradeMe listing URL: ")
-    url = _validate_url(url)
-
+    url = input("Paste TradeMe listing URL: ").strip()
     result = asyncio.run(process_listing(url))
     if result:
         print("\nDone!")

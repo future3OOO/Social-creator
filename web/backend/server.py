@@ -27,6 +27,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from utils import (
     LOCAL_IMAGE_DIR, PUBLIC_IMAGE_BASE,
     upload_images, cleanup_remote, cleanup_local,
+    validate_trademe_url,
 )
 from scraper import scrape_trademe_listing
 from images import select_and_prepare_images
@@ -35,7 +36,6 @@ from publisher import MetaPublisher
 
 
 logger = logging.getLogger(__name__)
-TRADEME_HOST = "trademe.co.nz"
 LISTING_DIR_RE = re.compile(r"^tm-\d+$")
 MANAGED_LISTING_DIRS: set[str] = set()
 
@@ -80,20 +80,6 @@ def sse_event(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
-def _validate_trademe_url(url: str) -> str:
-    """Allow only TradeMe hosts for scrape requests."""
-    stripped = url.strip()
-    parsed = urlparse(stripped)
-    hostname = (parsed.hostname or "").lower()
-
-    if parsed.scheme not in {"http", "https"} or not hostname:
-        raise ValueError("URL must be an http(s) TradeMe listing URL.")
-    if hostname != TRADEME_HOST and not hostname.endswith(f".{TRADEME_HOST}"):
-        raise ValueError("URL must be a trademe.co.nz host.")
-
-    return stripped
-
-
 def _extract_listing_dir_from_public_url(image_url: str) -> str | None:
     """Extract safe listing dir from our own image host URLs only."""
     parsed = urlparse(image_url)
@@ -119,7 +105,7 @@ def _extract_listing_dir_from_public_url(image_url: str) -> str | None:
 async def scrape(req: ScrapeRequest) -> StreamingResponse:
     async def stream() -> AsyncGenerator[str, None]:
         try:
-            safe_url = _validate_trademe_url(req.url)
+            safe_url = validate_trademe_url(req.url)
         except ValueError as e:
             yield sse_event("error", {"message": str(e)})
             return
