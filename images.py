@@ -129,14 +129,13 @@ async def select_and_prepare_images(
     scored = scored[:max_images]
 
     # Resize and save
-    listing_subdir = f"tm-{listing_id}"
     processed: list[ProcessedImage] = []
     for i, (img, sc, _url) in enumerate(scored, 1):
         resized = resize_for_platform(img)
         filename = f"photo_{i}.jpg"
         save_path = listing_dir / filename
         resized.save(save_path, "JPEG", quality=JPEG_QUALITY, optimize=True)
-        public_url = f"{host_url}/{listing_subdir}/{filename}" if host_url else ""
+        public_url = f"{host_url}/{listing_dir.name}/{filename}" if host_url else ""
         processed.append(ProcessedImage(
             local_path=save_path,
             public_url=public_url,
