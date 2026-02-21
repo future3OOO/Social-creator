@@ -7,7 +7,7 @@ reconstructed as full-size /plus/ URLs.
 
 import json
 import re
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
 
 
@@ -146,14 +146,16 @@ async def scrape_trademe_listing(url: str) -> dict:
             viewport={"width": 1920, "height": 1080},
         )
         page = await context.new_page()
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        await page.wait_for_timeout(5000)
+        await page.goto(url, wait_until="networkidle", timeout=60000)
+        try:
+            await page.wait_for_selector("h1", timeout=10000)
+        except PlaywrightTimeout:
+            pass  # Some layouts lack h1; DOM fallback will handle it
 
-        # Scroll to trigger lazy-loaded images
+        # Scroll to trigger lazy-loaded images, then wait for them
         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await page.wait_for_timeout(1000)
+        await page.wait_for_load_state("networkidle")
         await page.evaluate("window.scrollTo(0, 0)")
-        await page.wait_for_timeout(500)
 
         html = await page.content()
         await browser.close()

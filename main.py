@@ -37,7 +37,7 @@ async def process_listing(url: str) -> dict:
     from copy_gen import generate_posts
     from publisher import MetaPublisher
 
-    from utils import PUBLIC_IMAGE_BASE, LOCAL_IMAGE_DIR
+    from utils import PUBLIC_IMAGE_BASE, LOCAL_IMAGE_DIR, upload_images, cleanup_remote
 
     host_url = os.environ.get("IMAGE_HOST_URL", PUBLIC_IMAGE_BASE)
     local_dir = os.environ.get("IMAGE_LOCAL_DIR", LOCAL_IMAGE_DIR)
@@ -65,17 +65,24 @@ async def process_listing(url: str) -> dict:
         images = await select_and_prepare_images(
             listing["images"], listing["listing_id"], local_dir, host_url=host_url,
         )
-        hero = images["hero"]
         carousel = images["carousel"]
-        print(f"  Prepared {len(carousel)} images (hero score: {hero[0].score:.2f})")
+        if not carousel:
+            print("All image downloads failed — cannot publish.")
+            return {}
+        print(f"  Prepared {len(carousel)} images (hero score: {carousel[0].score:.2f})")
 
-        # 3. Generate copy
+        # 3. Upload images to server for Meta API access
+        listing_dir = f"tm-{listing['listing_id']}"
+        print("Uploading images to server...")
+        await upload_images(listing_dir)
+
+        # 4. Generate copy
         print("Generating posts...")
         posts = await generate_posts(listing)
         print(f"\n--- Facebook ---\n{posts.facebook}\n")
         print(f"--- Instagram ---\n{posts.instagram}\n")
 
-        # 4. Publish
+        # 5. Publish
         image_urls = [img.public_url for img in carousel]
 
         print("Posting to Facebook...")
@@ -99,6 +106,11 @@ async def process_listing(url: str) -> dict:
 
     finally:
         await publisher.close()
+        if "listing_dir" in dir():
+            try:
+                await cleanup_remote(listing_dir)
+            except Exception as e:
+                print(f"Warning: remote cleanup failed: {e}", file=sys.stderr)
 
 
 def main() -> None:
