@@ -5,6 +5,7 @@ JSON endpoints for copy generation and publishing.
 """
 
 import json
+import logging
 import os
 import sys
 import time
@@ -30,6 +31,8 @@ from images import select_and_prepare_images
 from copy_gen import generate_posts
 from publisher import MetaPublisher
 
+
+logger = logging.getLogger(__name__)
 
 # --- App ---
 
@@ -155,4 +158,7 @@ async def publish(req: PublishRequest) -> dict:
     finally:
         await pub.close()
         if listing_dir:
-            await cleanup_remote(listing_dir)
+            try:
+                await cleanup_remote(listing_dir)
+            except Exception:
+                logger.warning("Remote cleanup failed for %s", listing_dir)

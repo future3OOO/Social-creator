@@ -92,11 +92,13 @@ async def select_and_prepare_images(
     listing_id: str,
     local_dir: str,
     max_images: int = MAX_IMAGES,
+    host_url: str = "",
 ) -> dict[str, list[ProcessedImage]]:
     """Download, score, resize, and save listing images.
 
     Saves resized images to {local_dir}/tm-{listing_id}/.
     Returns {"hero": [top image], "carousel": [top N images]}.
+    When host_url is provided, public_url is set for each image.
     """
     listing_dir = Path(local_dir) / f"tm-{listing_id}"
     listing_dir.mkdir(parents=True, exist_ok=True)
@@ -115,15 +117,17 @@ async def select_and_prepare_images(
     scored = scored[:max_images]
 
     # Resize and save
+    listing_subdir = f"tm-{listing_id}"
     processed: list[ProcessedImage] = []
     for i, (img, sc, _url) in enumerate(scored, 1):
         resized = resize_for_platform(img)
         filename = f"photo_{i}.jpg"
         save_path = listing_dir / filename
         resized.save(save_path, "JPEG", quality=JPEG_QUALITY, optimize=True)
+        public_url = f"{host_url}/{listing_subdir}/{filename}" if host_url else ""
         processed.append(ProcessedImage(
             local_path=save_path,
-            public_url="",
+            public_url=public_url,
             score=sc,
         ))
 

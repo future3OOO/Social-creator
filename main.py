@@ -37,8 +37,10 @@ async def process_listing(url: str) -> dict:
     from copy_gen import generate_posts
     from publisher import MetaPublisher
 
-    host_url = os.environ.get("IMAGE_HOST_URL", "https://propertypartner.co.nz/listings")
-    local_dir = os.environ.get("IMAGE_LOCAL_DIR", "/var/www/propertypartner/listings")
+    from utils import PUBLIC_IMAGE_BASE, LOCAL_IMAGE_DIR
+
+    host_url = os.environ.get("IMAGE_HOST_URL", PUBLIC_IMAGE_BASE)
+    local_dir = os.environ.get("IMAGE_LOCAL_DIR", LOCAL_IMAGE_DIR)
 
     publisher = MetaPublisher(
         page_id=os.environ["FB_PAGE_ID"],
@@ -61,7 +63,7 @@ async def process_listing(url: str) -> dict:
         # 2. Select and prepare images
         print("Selecting and preparing images...")
         images = await select_and_prepare_images(
-            listing["images"], listing["listing_id"], local_dir,
+            listing["images"], listing["listing_id"], local_dir, host_url=host_url,
         )
         hero = images["hero"]
         carousel = images["carousel"]
@@ -74,22 +76,15 @@ async def process_listing(url: str) -> dict:
         print(f"--- Instagram ---\n{posts.instagram}\n")
 
         # 4. Publish
-        hero_url = hero[0].public_url
-        carousel_urls = [img.public_url for img in carousel]
+        image_urls = [img.public_url for img in carousel]
 
         print("Posting to Facebook...")
-        if len(carousel_urls) >= 2:
-            fb_result = await publisher.post_facebook_multi(carousel_urls, posts.facebook)
-        else:
-            fb_result = await publisher.post_facebook_single(hero_url, posts.facebook)
+        fb_result = await publisher.post_facebook(image_urls, posts.facebook)
         fb_id = fb_result.get("post_id") or fb_result.get("id")
         print(f"  Facebook: https://facebook.com/{fb_id}")
 
         print("Posting to Instagram...")
-        if len(carousel_urls) >= 2:
-            ig_result = await publisher.post_instagram_carousel(carousel_urls, posts.instagram)
-        else:
-            ig_result = await publisher.post_instagram_single(hero_url, posts.instagram)
+        ig_result = await publisher.post_instagram(image_urls, posts.instagram)
         print(f"  Instagram: {ig_result['id']}")
 
         return {"facebook": fb_result, "instagram": ig_result}
