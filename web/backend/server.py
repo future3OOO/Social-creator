@@ -155,7 +155,7 @@ async def gen_copy(req: CopyRequest) -> dict:
     try:
         posts = await generate_posts(req.listing)
         return {"facebook": posts.facebook, "instagram": posts.instagram}
-    except Exception as e:
+    except Exception:
         logger.exception("Copy generation failed")
         raise HTTPException(status_code=500, detail="Copy generation failed")
 
@@ -197,7 +197,7 @@ async def publish(req: PublishRequest) -> dict:
         if req.instagram_caption is not None:
             results["instagram"] = await pub.post_instagram(req.image_urls, req.instagram_caption)
         return results
-    except Exception as e:
+    except Exception:
         logger.exception("Publish failed")
         raise HTTPException(status_code=500, detail="Publish failed")
     finally:
