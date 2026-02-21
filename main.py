@@ -34,7 +34,7 @@ async def process_listing(url: str) -> dict:
     # Late imports so dotenv loads before any module reads env vars
     from scraper import scrape_trademe_listing
     from images import select_and_prepare_images
-    from copy_gen import generate_posts
+    from copy_gen import generate_posts, SocialPosts
     from publisher import MetaPublisher
 
     from utils import PUBLIC_IMAGE_BASE, LOCAL_IMAGE_DIR, upload_images, cleanup_remote
@@ -48,6 +48,7 @@ async def process_listing(url: str) -> dict:
         page_token=os.environ["META_PAGE_TOKEN"],
     )
     listing_dir: str | None = None
+    posts: SocialPosts | None = None
 
     try:
         # 1. Scrape
@@ -97,8 +98,8 @@ async def process_listing(url: str) -> dict:
 
         return {"facebook": fb_result, "instagram": ig_result}
 
-    except Exception as e:
-        if "posts" in dir():
+    except Exception:
+        if posts:
             print("\nPublishing failed, but here's the generated copy:")
             print(f"\n--- Facebook ---\n{posts.facebook}")
             print(f"\n--- Instagram ---\n{posts.instagram}")
@@ -109,7 +110,7 @@ async def process_listing(url: str) -> dict:
         if listing_dir:
             try:
                 await cleanup_remote(listing_dir)
-            except OSError as e:
+            except Exception as e:
                 print(f"Warning: remote cleanup failed: {e}", file=sys.stderr)
 
 
