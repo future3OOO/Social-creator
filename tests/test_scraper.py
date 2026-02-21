@@ -2,17 +2,17 @@
 
 import pytest
 
-from scraper import _validate_trademe_url
+from utils import validate_trademe_url
 
 
-def test_validate_trademe_url_accepts_primary_host():
+def testvalidate_trademe_url_accepts_primary_host():
     url = "https://www.trademe.co.nz/a/property/residential/rent/listing/1234567890"
-    assert _validate_trademe_url(url) == url
+    assert validate_trademe_url(url) == url
 
 
-def test_validate_trademe_url_accepts_subdomain():
+def testvalidate_trademe_url_accepts_subdomain():
     url = "https://trademe.co.nz/a/property/residential/rent/listing/1234567890"
-    assert _validate_trademe_url(url) == url
+    assert validate_trademe_url(url) == url
 
 
 @pytest.mark.parametrize(
@@ -23,6 +23,6 @@ def test_validate_trademe_url_accepts_subdomain():
         "notaurl",
     ],
 )
-def test_validate_trademe_url_rejects_non_trademe_hosts_or_invalid_scheme(url: str):
+def testvalidate_trademe_url_rejects_non_trademe_hosts_or_invalid_scheme(url: str):
     with pytest.raises(ValueError, match="trademe.co.nz|http\\(s\\) TradeMe"):
-        _validate_trademe_url(url)
+        validate_trademe_url(url)

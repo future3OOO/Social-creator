@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -25,6 +26,22 @@ try:
     LOCAL_IMAGE_DIR = _env_dir or _fallback
 except PermissionError:
     LOCAL_IMAGE_DIR = _fallback
+
+
+TRADEME_HOST = "trademe.co.nz"
+
+
+def validate_trademe_url(url: str) -> str:
+    """Validate scheme/host to restrict scraping to TradeMe only."""
+    stripped = url.strip()
+    parsed = urlparse(stripped)
+    hostname = (parsed.hostname or "").lower()
+
+    if parsed.scheme not in {"http", "https"} or not hostname:
+        raise ValueError("URL must be an http(s) TradeMe listing URL.")
+    if hostname != TRADEME_HOST and not hostname.endswith(f".{TRADEME_HOST}"):
+        raise ValueError("URL must be a trademe.co.nz host.")
+    return stripped
 
 
 # --- Remote ops ---
