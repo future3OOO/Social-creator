@@ -97,8 +97,8 @@ export default function UrlInput() {
 
       // 4. Review
       useStore.getState().setStage("review");
-    } catch (e: any) {
-      useStore.getState().setError(e.message || "Pipeline failed");
+    } catch (e) {
+      useStore.getState().setError(e instanceof Error ? e.message : "Pipeline failed");
       useStore.getState().setStage("idle");
     }
   }
