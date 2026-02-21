@@ -47,6 +47,7 @@ async def process_listing(url: str) -> dict:
         ig_user_id=os.environ["IG_USER_ID"],
         page_token=os.environ["META_PAGE_TOKEN"],
     )
+    listing_dir: str | None = None
 
     try:
         # 1. Scrape
@@ -96,8 +97,7 @@ async def process_listing(url: str) -> dict:
 
         return {"facebook": fb_result, "instagram": ig_result}
 
-    except Exception:
-        # If we generated copy, print it so the user can manually post
+    except Exception as e:
         if "posts" in dir():
             print("\nPublishing failed, but here's the generated copy:")
             print(f"\n--- Facebook ---\n{posts.facebook}")
@@ -106,10 +106,10 @@ async def process_listing(url: str) -> dict:
 
     finally:
         await publisher.close()
-        if "listing_dir" in dir():
+        if listing_dir:
             try:
                 await cleanup_remote(listing_dir)
-            except Exception as e:
+            except OSError as e:
                 print(f"Warning: remote cleanup failed: {e}", file=sys.stderr)
 
 

@@ -7,11 +7,13 @@ JSON endpoints for copy generation and publishing.
 import json
 import logging
 import os
+import re
 import sys
 import time
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +35,9 @@ from publisher import MetaPublisher
 
 
 logger = logging.getLogger(__name__)
+TRADEME_HOST = "trademe.co.nz"
+LISTING_DIR_RE = re.compile(r"^tm-\d+$")
+MANAGED_LISTING_DIRS: set[str] = set()
 
 # --- App ---
 
@@ -75,15 +80,54 @@ def sse_event(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+def _validate_trademe_url(url: str) -> str:
+    """Allow only TradeMe hosts for scrape requests."""
+    stripped = url.strip()
+    parsed = urlparse(stripped)
+    hostname = (parsed.hostname or "").lower()
+
+    if parsed.scheme not in {"http", "https"} or not hostname:
+        raise ValueError("URL must be an http(s) TradeMe listing URL.")
+    if hostname != TRADEME_HOST and not hostname.endswith(f".{TRADEME_HOST}"):
+        raise ValueError("URL must be a trademe.co.nz host.")
+
+    return stripped
+
+
+def _extract_listing_dir_from_public_url(image_url: str) -> str | None:
+    """Extract safe listing dir from our own image host URLs only."""
+    parsed = urlparse(image_url)
+    base = urlparse(PUBLIC_IMAGE_BASE)
+    if parsed.scheme != base.scheme or parsed.netloc != base.netloc:
+        return None
+
+    base_path = base.path.rstrip("/")
+    prefix = f"{base_path}/" if base_path else "/"
+    if not parsed.path.startswith(prefix):
+        return None
+
+    relative = parsed.path[len(prefix):]
+    listing_dir = relative.split("/", 1)[0]
+    if LISTING_DIR_RE.fullmatch(listing_dir):
+        return listing_dir
+    return None
+
+
 # --- Endpoints ---
 
 @app.post("/api/scrape")
 async def scrape(req: ScrapeRequest) -> StreamingResponse:
     async def stream() -> AsyncGenerator[str, None]:
+        try:
+            safe_url = _validate_trademe_url(req.url)
+        except ValueError as e:
+            yield sse_event("error", {"message": str(e)})
+            return
+
         cleanup_local()
         yield sse_event("progress", {"step": "scraping", "message": "Connecting to TradeMe..."})
         try:
-            listing = await scrape_trademe_listing(req.url)
+            listing = await scrape_trademe_listing(safe_url)
             yield sse_event("progress", {"step": "scraping", "message": f"Found {len(listing.get('images', []))} images"})
             yield sse_event("complete", {"listing": listing})
         except Exception as e:
@@ -103,6 +147,7 @@ async def process_images(req: ImagesRequest) -> StreamingResponse:
             )
             yield sse_event("progress", {"step": "images", "message": "Uploading to server..."})
             await upload_images(listing_dir)
+            MANAGED_LISTING_DIRS.add(listing_dir)
 
             # Return public server URLs with cache-bust param
             bust = int(time.time())
@@ -138,11 +183,22 @@ async def publish(req: PublishRequest) -> dict:
     if not all([page_id, ig_user_id, page_token]):
         raise HTTPException(status_code=500, detail="Missing Meta API credentials in env")
 
-    # Extract listing dir from URL for cleanup
+    # Cleanup is allowed only for listing dirs created by this backend instance.
     listing_dir = None
-    first_url = req.image_urls[0] if req.image_urls else ""
-    if PUBLIC_IMAGE_BASE in first_url:
-        listing_dir = first_url[len(PUBLIC_IMAGE_BASE) + 1:].split("/")[0]
+    extracted_dirs = [_extract_listing_dir_from_public_url(url) for url in req.image_urls]
+    valid_dirs = [d for d in extracted_dirs if d is not None]
+    if valid_dirs and len(valid_dirs) == len(req.image_urls):
+        unique_dirs = set(valid_dirs)
+        if len(unique_dirs) == 1:
+            candidate = next(iter(unique_dirs))
+            if candidate in MANAGED_LISTING_DIRS:
+                listing_dir = candidate
+            else:
+                logger.warning("Skipping remote cleanup for unmanaged listing dir: %s", candidate)
+        else:
+            logger.warning("Skipping remote cleanup due mixed listing dirs: %s", sorted(unique_dirs))
+    elif valid_dirs:
+        logger.warning("Skipping remote cleanup because image URLs were mixed managed/unmanaged")
 
     pub = MetaPublisher(page_id, ig_user_id, page_token)
 
@@ -160,5 +216,6 @@ async def publish(req: PublishRequest) -> dict:
         if listing_dir:
             try:
                 await cleanup_remote(listing_dir)
-            except Exception:
+                MANAGED_LISTING_DIRS.discard(listing_dir)
+            except OSError:
                 logger.warning("Remote cleanup failed for %s", listing_dir)

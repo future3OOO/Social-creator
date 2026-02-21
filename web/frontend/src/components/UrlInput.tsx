@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore } from "../store";
+import { useStore, type ListingData } from "../store";
 
 /** Consume an SSE stream, calling onEvent for each parsed event. */
 async function consumeSSE(
@@ -56,30 +56,30 @@ export default function UrlInput() {
 
     try {
       // 1. Scrape
-      let listing: Record<string, unknown> | null = null;
-      await consumeSSE("/api/scrape", { url: trimmed }, (event, data: any) => {
-        if (event === "progress") useStore.getState().setProgress(data.message);
-        if (event === "complete") listing = data.listing;
-        if (event === "error") throw new Error(data.message);
+      let listing: ListingData | null = null;
+      await consumeSSE("/api/scrape", { url: trimmed }, (event, data: Record<string, unknown>) => {
+        if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
+        if (event === "complete") listing = (data as { listing: ListingData }).listing;
+        if (event === "error") throw new Error((data as { message: string }).message);
       });
       if (!listing) throw new Error("No listing data returned");
-      useStore.getState().setListing(listing as any);
+      useStore.getState().setListing(listing);
 
       // 2. Images
       useStore.getState().setStage("processing_images");
       useStore.getState().setProgress("Downloading images...");
-      let images: any = null;
+      let images: { carousel: { local_path: string; public_url: string; score: number }[] } | null = null;
       await consumeSSE("/api/images", {
-        image_urls: (listing as any).images,
-        listing_id: (listing as any).listing_id,
-      }, (event, data: any) => {
-        if (event === "progress") useStore.getState().setProgress(data.message);
-        if (event === "complete") images = data.images;
-        if (event === "error") throw new Error(data.message);
+        image_urls: listing.images,
+        listing_id: listing.listing_id,
+      }, (event, data: Record<string, unknown>) => {
+        if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
+        if (event === "complete") images = (data as { images: typeof images }).images;
+        if (event === "error") throw new Error((data as { message: string }).message);
       });
       if (!images) throw new Error("No images returned");
       useStore.getState().setImages(
-        images.carousel.map((img: any, i: number) => ({ ...img, selected: i < 10 })),
+        images.carousel.map((img, i) => ({ ...img, selected: i < 10 })),
       );
 
       // 3. Copy
