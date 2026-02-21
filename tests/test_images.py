@@ -44,30 +44,36 @@ def test_square_scores_well():
 
 # -- resize_for_platform --
 
-def test_instagram_resize_exact_dimensions():
-    img = _make_image(2000, 1500)
-    resized = resize_for_platform(img, "instagram")
-    assert resized.size == (1080, 1350)
+def test_landscape_preserves_aspect():
+    """Standard landscape photo keeps aspect ratio, width=1080."""
+    img = _make_image(2000, 1500)  # 1.33:1 — within IG range
+    resized = resize_for_platform(img)
+    assert resized.width == 1080
+    assert resized.height == int(1080 * 1500 / 2000)
 
 
-def test_facebook_resize_exact_dimensions():
-    img = _make_image(2000, 1500)
-    resized = resize_for_platform(img, "facebook")
-    assert resized.size == (1080, 1080)
+def test_wide_image_cropped_to_max_aspect():
+    """Ultra-wide (>1.91:1) is center-cropped to 1.91:1."""
+    img = _make_image(4000, 1000)  # 4:1
+    resized = resize_for_platform(img)
+    assert resized.width == 1080
+    assert abs(resized.width / resized.height - 1.91) < 0.02
 
 
-def test_wide_image_center_cropped():
-    """A very wide image should be center-cropped, not stretched."""
-    img = _make_image(4000, 1000)
-    resized = resize_for_platform(img, "instagram")
-    assert resized.size == (1080, 1350)
+def test_tall_image_cropped_to_min_aspect():
+    """Very tall (<0.8) is center-cropped to 4:5."""
+    img = _make_image(800, 3000)  # 0.27:1
+    resized = resize_for_platform(img)
+    assert resized.width == 1080
+    assert abs(resized.width / resized.height - 0.8) < 0.02
 
 
-def test_tall_image_center_cropped():
-    """A very tall image should be center-cropped, not stretched."""
-    img = _make_image(800, 3000)
-    resized = resize_for_platform(img, "facebook")
-    assert resized.size == (1080, 1080)
+def test_normal_aspect_no_crop():
+    """16:9 landscape — within range, no cropping needed."""
+    img = _make_image(1920, 1080)
+    resized = resize_for_platform(img)
+    assert resized.width == 1080
+    assert resized.height == 607  # 1080 * 1080/1920 ≈ 607
 
 
 # -- download_and_validate --

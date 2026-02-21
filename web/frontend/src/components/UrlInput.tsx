@@ -79,7 +79,7 @@ export default function UrlInput() {
       });
       if (!images) throw new Error("No images returned");
       useStore.getState().setImages(
-        images.carousel.map((img: any) => ({ ...img, selected: true })),
+        images.carousel.map((img: any, i: number) => ({ ...img, selected: i < 10 })),
       );
 
       // 3. Copy

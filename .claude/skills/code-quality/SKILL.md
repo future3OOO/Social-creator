@@ -16,7 +16,7 @@ Apply these rules to every code change. Violations must be fixed before the chan
 - Every line must earn its place. If a fix can make the codebase smaller, it must.
 - No wrapper functions for one-time operations.
 - No premature abstractions. Three similar lines are better than a premature helper.
-- No "just in case" error handling, feature flags, or backwards-compatibility shims.
+- No unnecessary error handling for operations that can't fail. Handle real failure modes at boundaries (API calls, file I/O, network) but don't wrap simple internal logic.
 - If something is unused, delete it completely. No `_unused` renames, no `// removed` comments.
 
 ## 2. No Duplication

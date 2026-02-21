@@ -1,8 +1,8 @@
-"""Image download, scoring, and platform-specific resizing.
+"""Image download, scoring, and resizing.
 
 Downloads listing images, validates quality, scores by resolution/aspect,
-resizes to Instagram 4:5 (1080x1350) or Facebook square (1080x1080),
-and saves to the public image directory for Meta API access.
+resizes to 1080px wide (clamped to Instagram's 4:5–1.91:1 aspect range),
+and saves to the local image directory for upload and Meta API access.
 """
 
 import asyncio

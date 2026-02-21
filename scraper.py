@@ -141,47 +141,46 @@ async def scrape_trademe_listing(url: str) -> dict:
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            viewport={"width": 1920, "height": 1080},
-        )
-        page = await context.new_page()
-        await page.goto(url, wait_until="networkidle", timeout=60000)
         try:
-            await page.wait_for_selector("h1", timeout=10000)
-        except PlaywrightTimeout:
-            pass  # Some layouts lack h1; DOM fallback will handle it
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = await context.new_page()
+            await page.goto(url, wait_until="networkidle", timeout=60000)
+            try:
+                await page.wait_for_selector("h1", timeout=10000)
+            except PlaywrightTimeout:
+                pass  # Some layouts lack h1; DOM fallback will handle it
 
-        # Scroll to trigger lazy-loaded images, then wait for them
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await page.wait_for_load_state("networkidle")
-        await page.evaluate("window.scrollTo(0, 0)")
+            # Scroll to trigger lazy-loaded images, then wait for them
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page.wait_for_load_state("networkidle")
+            await page.evaluate("window.scrollTo(0, 0)")
 
-        html = await page.content()
-        await browser.close()
+            html = await page.content()
+        finally:
+            await browser.close()
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # --- Tier 1: JSON-LD ---
+    # Parse all tiers, merge best fields from each
     json_ld_tag = soup.find("script", type="application/ld+json")
-    fields = _parse_json_ld(json_ld_tag.string if json_ld_tag else None)
-
-    # --- Tier 2: __NEXT_DATA__ ---
-    if fields is None:
-        next_tag = soup.find("script", id="__NEXT_DATA__")
-        fields = _parse_next_data(next_tag.string if next_tag else None)
-
-    # --- Tier 3: DOM fallback ---
-    if fields is None:
-        fields = _parse_dom(soup)
-    else:
-        # Fill any gaps from DOM
-        dom = _parse_dom(soup)
+    next_tag = soup.find("script", id="__NEXT_DATA__")
+    tiers = [
+        _parse_json_ld(json_ld_tag.string if json_ld_tag else None),
+        _parse_next_data(next_tag.string if next_tag else None),
+        _parse_dom(soup),
+    ]
+    fields: dict = {}
+    for tier in tiers:
+        if not tier:
+            continue
         for key in ("title", "description", "address", "price"):
-            if not fields.get(key):
-                fields[key] = dom.get(key)
-        if "attributes" not in fields:
-            fields["attributes"] = dom.get("attributes", {})
+            if not fields.get(key) and tier.get(key):
+                fields[key] = tier[key]
+        if "attributes" not in fields and tier.get("attributes"):
+            fields["attributes"] = tier["attributes"]
 
     # Extract photo IDs → full-size URLs
     photo_ids = _photo_ids_from_html(html)
