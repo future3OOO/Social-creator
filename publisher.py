@@ -115,7 +115,7 @@ class MetaPublisher:
             if status == "FINISHED":
                 return
             if status == "ERROR":
-                raise ContainerError(f"Container {container_id} failed: {payload}")
+                raise ContainerError(f"Container {container_id} failed: {last_payload}")
             await asyncio.sleep(1)
         raise TimeoutError(
             f"Container {container_id} not ready after {max_wait}s (last payload: {last_payload})"
