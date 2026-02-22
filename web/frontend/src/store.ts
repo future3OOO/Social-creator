@@ -32,6 +32,7 @@ interface PipelineState {
   error: string | null;
   listing: ListingData | null;
   images: ProcessedImage[];
+  storyUrl: string | null;
   facebookCopy: string;
   instagramCopy: string;
   publishResults: Record<string, unknown>;
@@ -41,6 +42,7 @@ interface PipelineState {
   setError: (err: string | null) => void;
   setListing: (data: ListingData) => void;
   setImages: (imgs: ProcessedImage[]) => void;
+  setStoryUrl: (url: string | null) => void;
   toggleImage: (index: number) => void;
   reorderImages: (reordered: ProcessedImage[]) => void;
   setFacebookCopy: (copy: string) => void;
@@ -55,6 +57,7 @@ const INITIAL = {
   error: null,
   listing: null,
   images: [],
+  storyUrl: null,
   facebookCopy: "",
   instagramCopy: "",
   publishResults: {},
@@ -67,6 +70,7 @@ export const useStore = create<PipelineState>((set) => ({
   setError: (error) => set({ error }),
   setListing: (listing) => set({ listing }),
   setImages: (images) => set({ images }),
+  setStoryUrl: (storyUrl) => set({ storyUrl }),
   toggleImage: (index) =>
     set((s) => {
       const img = s.images[index];

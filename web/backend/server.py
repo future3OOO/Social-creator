@@ -72,6 +72,9 @@ class PublishRequest(BaseModel):
     facebook_caption: str | None = None
     instagram_caption: str | None = None
     image_urls: list[str]
+    story_url: str | None = None
+    publish_fb_story: bool = False
+    publish_ig_story: bool = False
 
 
 # --- Helpers ---
@@ -137,9 +140,14 @@ async def process_images(req: ImagesRequest) -> StreamingResponse:
             # Return public server URLs with cache-bust param
             bust = int(time.time())
             def pub_url(img): return f"{PUBLIC_IMAGE_BASE}/{listing_dir}/{img.local_path.name}?v={bust}"
+            story_url = (
+                f"{PUBLIC_IMAGE_BASE}/{listing_dir}/story_hero.jpg?v={bust}"
+                if result.get("story") else None
+            )
             serialized = {
                 "hero": [{"public_url": pub_url(img), "score": img.score} for img in result["hero"]],
                 "carousel": [{"public_url": pub_url(img), "score": img.score} for img in result["carousel"]],
+                "story_url": story_url,
             }
             yield sse_event("progress", {"step": "images", "message": f"Prepared {len(result['carousel'])} images"})
             yield sse_event("complete", {"images": serialized})
@@ -196,6 +204,11 @@ async def publish(req: PublishRequest) -> dict:
             results["facebook"] = await pub.post_facebook(req.image_urls, req.facebook_caption)
         if req.instagram_caption is not None:
             results["instagram"] = await pub.post_instagram(req.image_urls, req.instagram_caption)
+        if req.story_url:
+            if req.publish_fb_story:
+                results["facebook_story"] = await pub.post_facebook_story(req.story_url)
+            if req.publish_ig_story:
+                results["instagram_story"] = await pub.post_instagram_story(req.story_url)
         return results
     except Exception:
         logger.exception("Publish failed")

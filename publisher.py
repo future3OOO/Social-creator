@@ -95,6 +95,29 @@ class MetaPublisher:
             data={"creation_id": result["id"], "access_token": self.token},
         )
 
+    async def post_facebook_story(self, image_url: str) -> dict:
+        """Post a single image as a Facebook Story."""
+        photo = await self._api(
+            "POST", f"{self.page_id}/photos",
+            data={"url": image_url, "published": "false", "access_token": self.token},
+        )
+        return await self._api(
+            "POST", f"{self.page_id}/photo_stories",
+            data={"photo_id": photo["id"], "access_token": self.token},
+        )
+
+    async def post_instagram_story(self, image_url: str) -> dict:
+        """Post a single image as an Instagram Story."""
+        container = await self._api(
+            "POST", f"{self.ig_user_id}/media",
+            data={"image_url": image_url, "media_type": "STORIES", "access_token": self.token},
+        )
+        await self._wait_for_container(container["id"])
+        return await self._api(
+            "POST", f"{self.ig_user_id}/media_publish",
+            data={"creation_id": container["id"], "access_token": self.token},
+        )
+
     async def _wait_for_container(self, container_id: str, max_wait: int = 30) -> None:
         """Poll until an Instagram media container finishes processing."""
         last_payload: dict | None = None

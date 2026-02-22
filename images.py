@@ -97,6 +97,10 @@ def resize_for_platform(img: Image.Image, platform: str = "instagram") -> Image.
         square = _crop_to_ratio(img, 1.0)
         return square.resize((1080, 1080), Image.Resampling.LANCZOS)
 
+    if normalized == "story":
+        portrait = _crop_to_ratio(img, 9 / 16)
+        return portrait.resize((1080, 1920), Image.Resampling.LANCZOS)
+
     raise ValueError(f"Unsupported platform: {platform}")
 
 
@@ -106,7 +110,7 @@ async def select_and_prepare_images(
     local_dir: str,
     max_images: int = MAX_IMAGES,
     host_url: str = "",
-) -> dict[str, list[ProcessedImage]]:
+) -> dict[str, list[ProcessedImage] | str | None]:
     """Download, score, resize, and save listing images.
 
     Saves resized images to {local_dir}/tm-{listing_id}/.
@@ -145,7 +149,17 @@ async def select_and_prepare_images(
             score=sc,
         ))
 
+    # Save story variant of hero image (9:16 portrait)
+    story_path = None
+    if scored:
+        hero_img = scored[0][0]
+        story_resized = resize_for_platform(hero_img, "story")
+        story_file = listing_dir / "story_hero.jpg"
+        story_resized.save(story_file, "JPEG", quality=JPEG_QUALITY, optimize=True)
+        story_path = story_file
+
     return {
         "hero": processed[:1],
         "carousel": processed,
+        "story": str(story_path) if story_path else None,
     }

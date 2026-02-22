@@ -15,8 +15,12 @@ export default function PublishPanel() {
   const setError = useStore((s) => s.setError);
   const reset = useStore((s) => s.reset);
 
+  const storyUrl = useStore((s) => s.storyUrl);
+
   const [publishFb, setPublishFb] = useState(true);
   const [publishIg, setPublishIg] = useState(true);
+  const [publishFbStory, setPublishFbStory] = useState(true);
+  const [publishIgStory, setPublishIgStory] = useState(true);
   const [loading, setLoading] = useState(false);
 
   async function doPublish() {
@@ -31,6 +35,9 @@ export default function PublishPanel() {
           facebook_caption: publishFb ? fbCopy : null,
           instagram_caption: publishIg ? igCopy : null,
           image_urls: images.map((i) => i.public_url),
+          story_url: storyUrl,
+          publish_fb_story: publishFbStory && !!storyUrl,
+          publish_ig_story: publishIgStory && !!storyUrl,
         }),
       });
       if (!resp.ok) {
@@ -70,8 +77,18 @@ export default function PublishPanel() {
             </p>
           )}
           {"instagram" in publishResults && (
-            <p className="mb-4 text-sm" style={{ color: "var(--text-muted)" }}>
+            <p className="mb-2 text-sm" style={{ color: "var(--text-muted)" }}>
               Instagram: <span className="text-brand-400">Live</span>
+            </p>
+          )}
+          {"facebook_story" in publishResults && (
+            <p className="mb-2 text-sm" style={{ color: "var(--text-muted)" }}>
+              Facebook Story: <span className="text-brand-400">Live</span>
+            </p>
+          )}
+          {"instagram_story" in publishResults && (
+            <p className="mb-4 text-sm" style={{ color: "var(--text-muted)" }}>
+              Instagram Story: <span className="text-brand-400">Live</span>
             </p>
           )}
 
@@ -90,6 +107,12 @@ export default function PublishPanel() {
       <div className="mb-6 flex flex-col gap-4">
         <Toggle label="Facebook" enabled={publishFb} onChange={setPublishFb} />
         <Toggle label="Instagram" enabled={publishIg} onChange={setPublishIg} />
+        {storyUrl && (
+          <>
+            <Toggle label="Facebook Story" enabled={publishFbStory} onChange={setPublishFbStory} />
+            <Toggle label="Instagram Story" enabled={publishIgStory} onChange={setPublishIgStory} />
+          </>
+        )}
       </div>
 
       <p className="mb-6 text-center text-sm" style={{ color: "var(--text-muted)" }}>

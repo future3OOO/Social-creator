@@ -90,6 +90,20 @@ def test_facebook_resize_is_square():
     assert resized.size == (1080, 1080)
 
 
+def test_story_resize_portrait():
+    """Story variant should output 1080x1920 (9:16)."""
+    img = _make_image(2000, 1500)
+    resized = resize_for_platform(img, "story")
+    assert resized.size == (1080, 1920)
+
+
+def test_story_resize_landscape_crops():
+    """Landscape image should be center-cropped to 9:16 before resize."""
+    img = _make_image(3000, 1000)  # 3:1 — very wide
+    resized = resize_for_platform(img, "story")
+    assert resized.size == (1080, 1920)
+
+
 def test_unknown_platform_raises():
     img = _make_image(1000, 1000)
     with pytest.raises(ValueError, match="Unsupported platform"):
