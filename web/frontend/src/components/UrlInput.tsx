@@ -69,31 +69,35 @@ export default function UrlInput() {
 
     try {
       // 1. Scrape
-      let listing: ListingData | null = null;
-      await consumeSSE("/api/scrape", { url: trimmed }, (event, data: Record<string, unknown>) => {
+      let _listing: ListingData | null = null;
+      await consumeSSE("/api/scrape", { url: trimmed }, (event, data) => {
         if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
-        if (event === "complete") listing = (data as { listing: ListingData }).listing;
+        if (event === "complete") _listing = (data as { listing: ListingData }).listing;
         if (event === "error") throw new Error((data as { message: string }).message);
       });
-      if (!listing) throw new Error("No listing data returned");
+      if (!_listing) throw new Error("No listing data returned");
+      const listing = _listing as ListingData;
       useStore.getState().setListing(listing);
 
       // 2. Images
       useStore.getState().setStage("processing_images");
       useStore.getState().setProgress("Downloading images...");
-      let images: { carousel: { local_path: string; public_url: string; score: number }[] } | null = null;
+      type ImagesResult = { carousel: { public_url: string; score: number }[]; story_url: string | null };
+      let _images: ImagesResult | null = null;
       await consumeSSE("/api/images", {
         image_urls: listing.images,
         listing_id: listing.listing_id,
-      }, (event, data: Record<string, unknown>) => {
+      }, (event, data) => {
         if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
-        if (event === "complete") images = (data as { images: typeof images }).images;
+        if (event === "complete") _images = (data as { images: ImagesResult }).images;
         if (event === "error") throw new Error((data as { message: string }).message);
       });
-      if (!images) throw new Error("No images returned");
+      if (!_images) throw new Error("No images returned");
+      const images = _images as ImagesResult;
       useStore.getState().setImages(
         images.carousel.map((img, i) => ({ ...img, selected: i < 10 })),
       );
+      useStore.getState().setStoryUrl(images.story_url);
 
       // 3. Copy
       useStore.getState().setStage("generating_copy");
