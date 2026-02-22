@@ -52,6 +52,9 @@ async function consumeSSE(
 export default function UrlInput() {
   const [url, setUrl] = useState("");
   const error = useStore((s) => s.error);
+  type PipelineImages = {
+    carousel: { local_path: string; public_url: string; score: number }[];
+  };
 
   async function run() {
     const trimmed = url.trim();
@@ -70,29 +73,31 @@ export default function UrlInput() {
     try {
       // 1. Scrape
       let listing: ListingData | null = null;
-      await consumeSSE("/api/scrape", { url: trimmed }, (event, data: Record<string, unknown>) => {
+      await consumeSSE("/api/scrape", { url: trimmed }, (event, data) => {
         if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
         if (event === "complete") listing = (data as { listing: ListingData }).listing;
         if (event === "error") throw new Error((data as { message: string }).message);
       });
       if (!listing) throw new Error("No listing data returned");
-      useStore.getState().setListing(listing);
+      const scrapedListing = listing as ListingData;
+      useStore.getState().setListing(scrapedListing);
 
       // 2. Images
       useStore.getState().setStage("processing_images");
       useStore.getState().setProgress("Downloading images...");
-      let images: { carousel: { local_path: string; public_url: string; score: number }[] } | null = null;
+      let images: PipelineImages | null = null;
       await consumeSSE("/api/images", {
-        image_urls: listing.images,
-        listing_id: listing.listing_id,
-      }, (event, data: Record<string, unknown>) => {
+        image_urls: scrapedListing.images,
+        listing_id: scrapedListing.listing_id,
+      }, (event, data) => {
         if (event === "progress") useStore.getState().setProgress((data as { message: string }).message);
-        if (event === "complete") images = (data as { images: typeof images }).images;
+        if (event === "complete") images = (data as { images: PipelineImages }).images;
         if (event === "error") throw new Error((data as { message: string }).message);
       });
       if (!images) throw new Error("No images returned");
+      const selectedImages = images as PipelineImages;
       useStore.getState().setImages(
-        images.carousel.map((img, i) => ({ ...img, selected: i < 10 })),
+        selectedImages.carousel.map((img: { public_url: string; score: number }, i: number) => ({ ...img, selected: i < 10 })),
       );
 
       // 3. Copy
@@ -101,7 +106,7 @@ export default function UrlInput() {
       const copyResp = await fetch("/api/generate-copy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing }),
+        body: JSON.stringify({ listing: scrapedListing }),
       });
       if (!copyResp.ok) throw new Error("Copy generation failed");
       const copy = await copyResp.json();
