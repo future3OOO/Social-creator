@@ -13,6 +13,7 @@ dist/
 build/
 .pytest_cache/
 node_modules/
+*.tsbuildinfo
 dist/
 *.Zone.Identifier
 New Text Document.txt
